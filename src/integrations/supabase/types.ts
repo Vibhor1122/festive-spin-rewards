@@ -14,16 +14,291 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_phones: {
+        Row: {
+          phone: string
+        }
+        Insert: {
+          phone: string
+        }
+        Update: {
+          phone?: string
+        }
+        Relationships: []
+      }
+      campaigns: {
+        Row: {
+          coupon_validity_days: number
+          id: number
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          coupon_validity_days?: number
+          id?: number
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Update: {
+          coupon_validity_days?: number
+          id?: number
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      coupon_redemptions: {
+        Row: {
+          coupon_id: string
+          id: string
+          redeemed_at: string
+          redeemed_by: string
+        }
+        Insert: {
+          coupon_id: string
+          id?: string
+          redeemed_at?: string
+          redeemed_by: string
+        }
+        Update: {
+          coupon_id?: string
+          id?: string
+          redeemed_at?: string
+          redeemed_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_redemptions_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: true
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          discount: number
+          expires_at: string
+          id: string
+          phone: string
+          redeemed_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          discount: number
+          expires_at: string
+          id?: string
+          phone: string
+          redeemed_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          discount?: number
+          expires_at?: string
+          id?: string
+          phone?: string
+          redeemed_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      otp_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          expires_at: string
+          id: string
+          phone: string
+          used: boolean
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          phone: string
+          used?: boolean
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          phone?: string
+          used?: boolean
+        }
+        Relationships: []
+      }
+      prizes: {
+        Row: {
+          discount: number
+          id: string
+          label: string
+          probability: number
+          sort_order: number
+        }
+        Insert: {
+          discount: number
+          id: string
+          label: string
+          probability?: number
+          sort_order: number
+        }
+        Update: {
+          discount?: number
+          id?: string
+          label?: string
+          probability?: number
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          phone: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          phone: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          phone?: string
+        }
+        Relationships: []
+      }
+      spin_history: {
+        Row: {
+          coupon_code: string | null
+          created_at: string
+          discount: number
+          id: string
+          phone: string
+          prize_label: string
+          user_id: string
+        }
+        Insert: {
+          coupon_code?: string | null
+          created_at?: string
+          discount: number
+          id?: string
+          phone: string
+          prize_label: string
+          user_id: string
+        }
+        Update: {
+          coupon_code?: string | null
+          created_at?: string
+          discount?: number
+          id?: string
+          phone?: string
+          prize_label?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      spins: {
+        Row: {
+          coupon_id: string | null
+          created_at: string
+          discount: number
+          id: string
+          phone: string
+          prize_id: string
+          prize_label: string
+          user_id: string
+        }
+        Insert: {
+          coupon_id?: string | null
+          created_at?: string
+          discount: number
+          id?: string
+          phone: string
+          prize_id: string
+          prize_label: string
+          user_id: string
+        }
+        Update: {
+          coupon_id?: string | null
+          created_at?: string
+          discount?: number
+          id?: string
+          phone?: string
+          prize_id?: string
+          prize_label?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spins_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      perform_spin: { Args: never; Returns: Json }
+      redeem_coupon: { Args: { _code: string }; Returns: Json }
+      reset_spin: { Args: { _user_id: string }; Returns: undefined }
+      set_coupon_expiry: {
+        Args: { _coupon_id: string; _expires: string }
+        Returns: undefined
+      }
+      update_prize_probabilities: { Args: { _items: Json }; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +425,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
