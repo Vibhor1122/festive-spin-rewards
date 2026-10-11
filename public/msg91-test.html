@@ -1,0 +1,276 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MSG91 OTP Test</title>
+</head>
+
+<body>
+  <h2>MSG91 OTP Test</h2>
+  <p>Enter your mobile number to test SMS delivery.</p>
+
+  <input
+    id="phone"
+    type="tel"
+    maxlength="10"
+    placeholder="10-digit mobile number"
+  />
+
+  <button id="send" type="button" disabled>
+    Send OTP
+  </button>
+
+  <p>
+    <input
+      id="otp"
+      type="text"
+      maxlength="6"
+      placeholder="Enter 6-digit OTP"
+    />
+
+    <button id="verify" type="button" disabled>
+      Verify OTP
+    </button>
+  </p>
+
+  <p id="status">Loading MSG91...</p>
+
+  <script src="https://verify.msg91.com/otp-provider.js"></script>
+
+  <script>
+    // MSG91 Custom UI configuration
+    const widgetId = "366a6a675369323434383730";
+    const tokenAuth = "580271T4IEtpkd6ac9eec4P1";
+
+    // Supabase project URL (public, not a secret)
+    const SUPABASE_URL =
+      "https://vtisonziihxmztxvnpcl.supabase.co";
+
+    const status = document.getElementById("status");
+    const sendButton = document.getElementById("send");
+    const verifyButton = document.getElementById("verify");
+    const phoneInput = document.getElementById("phone");
+    const otpInput = document.getElementById("otp");
+
+    let verificationInProgress = false;
+    let otpRequested = false;
+
+    // Send verified MSG91 token to Supabase
+    async function testBackendVerification(accessToken) {
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/verify-msg91-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ accessToken })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Backend request failed: HTTP ${response.status}`
+        );
+      }
+
+      const result = await response.json();
+
+      console.log("Supabase backend diagnostic:", {
+        diagnosticComplete: result.diagnosticComplete,
+        httpStatus: result.httpStatus,
+        responseKeys: result.responseKeys,
+        verificationType: result.verificationType
+      });
+
+      return result;
+    }
+
+    // Initialize MSG91
+    function loadWidget() {
+      if (typeof window.initSendOTP !== "function") {
+        status.textContent = "MSG91 SDK did not load.";
+        return;
+      }
+
+      window.initSendOTP({
+        widgetId,
+        tokenAuth,
+        exposeMethods: true,
+
+        success: function (data) {
+          console.log(
+            "MSG91 SDK success response keys:",
+            Object.keys(data || {})
+          );
+        },
+
+        failure: function () {
+          status.textContent = "MSG91 verification failed.";
+        }
+      });
+
+      sendButton.disabled = false;
+      status.textContent = "MSG91 ready.";
+    }
+
+    window.addEventListener("load", loadWidget);
+
+    // SEND OTP
+    sendButton.addEventListener("click", function () {
+      const phone = phoneInput.value.trim();
+
+      if (!/^[6-9]\d{9}$/.test(phone)) {
+        status.textContent =
+          "Enter a valid 10-digit Indian mobile number.";
+        return;
+      }
+
+      if (typeof window.sendOtp !== "function") {
+        status.textContent = "MSG91 sendOtp unavailable.";
+        return;
+      }
+
+      sendButton.disabled = true;
+      verifyButton.disabled = true;
+      otpRequested = false;
+      otpInput.value = "";
+      status.textContent = "Requesting OTP...";
+
+      window.sendOtp(
+        "91" + phone,
+
+        function (response) {
+          const result =
+            typeof response === "string"
+              ? JSON.parse(response)
+              : response;
+
+          if (result?.type === "success") {
+            otpRequested = true;
+            verifyButton.disabled = false;
+            status.textContent =
+              "OTP sent successfully. Check your phone.";
+          } else {
+            status.textContent = "OTP request was not successful.";
+          }
+
+          sendButton.disabled = false;
+        },
+
+        function () {
+          status.textContent = "Could not send OTP.";
+          sendButton.disabled = false;
+        }
+      );
+    });
+
+    // VERIFY OTP
+    verifyButton.addEventListener("click", function () {
+      if (verificationInProgress || !otpRequested) {
+        return;
+      }
+
+      const otp = otpInput.value.trim();
+
+      if (!/^\d{6}$/.test(otp)) {
+        status.textContent = "Enter a valid 6-digit OTP.";
+        return;
+      }
+
+      if (typeof window.verifyOtp !== "function") {
+        status.textContent = "MSG91 verifyOtp unavailable.";
+        return;
+      }
+
+      verificationInProgress = true;
+      verifyButton.disabled = true;
+      sendButton.disabled = true;
+      status.textContent = "Verifying OTP...";
+
+      window.verifyOtp(
+        otp,
+
+        async function (response) {
+          try {
+            const result =
+              typeof response === "string"
+                ? JSON.parse(response)
+                : response;
+
+            console.log(
+              "Verify OTP response keys:",
+              Object.keys(result || {})
+            );
+
+            if (
+              result?.type !== "success" ||
+              typeof result.message !== "string"
+            ) {
+              throw new Error("MSG91 OTP verification failed.");
+            }
+
+            // Do not log the actual token.
+            try {
+  const payload = JSON.parse(
+    atob(
+      result.message.split(".")[1]
+        .replace(/-/g, "+")
+        .replace(/_/g, "/")
+    )
+  );
+
+  console.log("MSG91 JWT claim names:", Object.keys(payload));
+} catch {
+  console.log("Could not decode MSG91 JWT payload.");
+}
+            console.log("MSG91 message format:", {
+              startsWithJWT: result.message.startsWith("eyJ"),
+              dotCount: result.message.split(".").length - 1,
+              length: result.message.length
+            });
+
+            status.textContent =
+              "OTP verified. Checking Supabase backend...";
+
+            // IMPORTANT: Called exactly once.
+            const backendResult =
+              await testBackendVerification(result.message);
+
+            if (
+              backendResult.verificationType === "success"
+            ) {
+              status.textContent =
+                "SUCCESS! MSG91 and Supabase verification passed.";
+              otpRequested = false;
+            } else {
+              status.textContent =
+                "MSG91 verified the OTP, but backend verification failed.";
+              console.log(
+                "Backend verification type:",
+                backendResult.verificationType
+              );
+            }
+          } catch (error) {
+            status.textContent =
+              "Verification error: " + error.message;
+          } finally {
+            verificationInProgress = false;
+            sendButton.disabled = false;
+            verifyButton.disabled = true;
+          }
+        },
+
+        function () {
+          status.textContent = "OTP verification failed.";
+          verificationInProgress = false;
+          verifyButton.disabled = false;
+          sendButton.disabled = false;
+        }
+      );
+    });
+  </script>
+</body>
+</html>
