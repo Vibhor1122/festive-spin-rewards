@@ -141,20 +141,28 @@ function Login() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ accessToken }),
+          body: JSON.stringify({
+  accessToken,
+  phone: normalizeIndianPhone(phone),
+}),
         }
       );
 
       const result = await response.json();
 
-    sessionStorage.setItem(
+   if (typeof result.spinTicket !== "string") {
+  throw new Error("Supabase did not issue a spin ticket.");
+}
+
+sessionStorage.removeItem("anushka_reward");
+
+sessionStorage.setItem(
   "anushka_guest",
   JSON.stringify({
     phone: normalizeIndianPhone(phone),
-    accessToken,
+    spinTicket: result.spinTicket,
   })
 );
-
 toast.success("Mobile OTP verified successfully!");
 
 navigate({ to: "/" });

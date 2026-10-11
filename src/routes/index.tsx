@@ -50,7 +50,7 @@ type Result = {
 
 type Guest = {
   phone: string;
-  accessToken: string;
+  spinTicket: string;
 };
 
 const SUPABASE_URL =
@@ -74,8 +74,8 @@ function Home() {
 
         if (
           /^[6-9]\d{9}$/.test(parsed.phone) &&
-          typeof parsed.accessToken === "string" &&
-          parsed.accessToken.length > 0
+         typeof parsed.spinTicket === "string" &&
+parsed.spinTicket.length > 0
         ) {
           setGuest(parsed);
         }
@@ -127,9 +127,8 @@ function Home() {
               "",
           },
           body: JSON.stringify({
-            phone: guest.phone,
-            accessToken: guest.accessToken,
-          }),
+  spinTicket: guest.spinTicket,
+}),
         }
       );
 
